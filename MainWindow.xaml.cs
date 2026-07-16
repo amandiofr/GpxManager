@@ -211,6 +211,13 @@ public partial class MainWindow : Window
         vm.SetSelection(lb.SelectedItems.Cast<TrackViewModel>().ToList(), lb.SelectedItem as TrackViewModel);
     }
 
+    private void OnSelectAllTracks(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Parent: ContextMenu cm } &&
+            cm.PlacementTarget is ListBox lb)
+            lb.SelectAll();
+    }
+
     // Adorner qui dessine la ligne d'insertion
     private sealed class InsertionLineAdorner : Adorner
     {

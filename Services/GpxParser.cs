@@ -38,6 +38,19 @@ public static class GpxParser
         };
     }
 
+    public static (GpxFile file, XDocument doc) NewEmpty()
+    {
+        var ns  = Ns11;
+        var doc = new XDocument(
+            new XDeclaration("1.0", "UTF-8", null),
+            new XElement(ns + "gpx",
+                new XAttribute("version", "1.1"),
+                new XAttribute("creator", "GpxManager"),
+                new XAttribute(XNamespace.Xmlns + "xsi", "http://www.w3.org/2001/XMLSchema-instance")));
+        var file = new GpxFile { FileName = "Sans titre.gpx", FilePath = "" };
+        return (file, doc);
+    }
+
     public static XDocument LoadXml(string filePath)
     {
         try

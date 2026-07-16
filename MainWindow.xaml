@@ -62,6 +62,10 @@
     <DockPanel>
         <ToolBarTray DockPanel.Dock="Top" IsLocked="True">
             <ToolBar>
+                <Button Command="{Binding NewFileCommand}" Padding="10,5" FontSize="13"
+                        ToolTip="Créer un nouveau fichier GPX vide">
+                    📄  Nouveau GPX
+                </Button>
                 <Button Command="{Binding OpenFileCommand}" Padding="10,5" FontSize="13"
                         ToolTip="Ouvrir un ou plusieurs fichiers GPX (Ctrl+O)">
                     📂  Ouvrir GPX
@@ -223,6 +227,15 @@
                                          Drop="OnTrackListDrop"
                                          SelectionChanged="OnTrackListSelectionChanged"
                                          Loaded="OnTrackListLoaded">
+                                    <ListBox.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Coller"
+                                                      Command="{Binding PlacementTarget.DataContext.PasteTracksCommand,
+                                                                        RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <MenuItem Header="Tout sélectionner"
+                                                      Click="OnSelectAllTracks" />
+                                        </ContextMenu>
+                                    </ListBox.ContextMenu>
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <StackPanel Margin="4,5"

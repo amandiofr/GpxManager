@@ -1,3 +1,4 @@
+using System.Xml.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GpxManager.Models;
@@ -32,6 +33,16 @@ public partial class MainViewModel : ObservableObject
         };
 
         RestoreSession();
+    }
+
+    [RelayCommand]
+    private void NewFile()
+    {
+        var (file, doc) = GpxParser.NewEmpty();
+        var tab = CreateTab(file, doc);
+        Tabs.Add(tab);
+        SelectedTab = tab;
+        SaveSession();
     }
 
     [RelayCommand]
@@ -76,9 +87,9 @@ public partial class MainViewModel : ObservableObject
         SaveSession();
     }
 
-    private GpxFileViewModel CreateTab(GpxFile gpx)
+    private GpxFileViewModel CreateTab(GpxFile gpx, XDocument? doc = null)
     {
-        var tab = new GpxFileViewModel(gpx);
+        var tab = new GpxFileViewModel(gpx, doc);
         tab.CloseRequested = () =>
         {
             int idx = Tabs.IndexOf(tab);

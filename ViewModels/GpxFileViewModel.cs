@@ -1,3 +1,4 @@
+using Microsoft.Win32;
 using BruTile.Predefined;
 using BruTile.Web;
 using System.Windows;
@@ -23,7 +24,7 @@ public enum MapSource { Map, Satellite, Topo }
 
 public partial class GpxFileViewModel : ObservableObject
 {
-    public GpxFile File { get; }
+    public GpxFile File { get; private set; }
     public string TabTitle => IsDirty ? $"* {File.FileName}" : File.FileName;
     public Mapsui.Map Map { get; }
     public MRect? TrackExtent { get; }
@@ -63,9 +64,20 @@ public partial class GpxFileViewModel : ObservableObject
     private void Save()
     {
         if (_pendingDoc == null) return;
+
+        string path = File.FilePath;
+        if (string.IsNullOrEmpty(path))
+        {
+            var dlg = new SaveFileDialog { Filter = "GPX|*.gpx", FileName = File.FileName };
+            if (dlg.ShowDialog() != true) return;
+            path = dlg.FileName;
+            File = new GpxFile { FilePath = path, FileName = System.IO.Path.GetFileName(path) };
+            OnPropertyChanged(nameof(TabTitle));
+        }
+
         try
         {
-            _pendingDoc.Save(File.FilePath);
+            _pendingDoc.Save(path);
             _pendingDoc = null;
             _gpxText    = null;
             IsDirty     = false;
@@ -426,9 +438,10 @@ public partial class GpxFileViewModel : ObservableObject
     public ILayer? WaypointLayer => _waypointLayer;
     public IReadOnlyList<(MPoint WorldPos, Waypoint Waypoint)> WaypointPositions { get; private set; } = [];
 
-    public GpxFileViewModel(GpxFile file)
+    public GpxFileViewModel(GpxFile file, XDocument? initialDoc = null)
     {
-        File = file;
+        File        = file;
+        _pendingDoc = initialDoc;
         foreach (var (track, i) in file.Tracks.Select((t, i) => (t, i)))
             Tracks.Add(new TrackViewModel(track, i + 1));
         foreach (var wp in file.Waypoints)
