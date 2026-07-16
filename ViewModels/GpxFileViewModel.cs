@@ -17,6 +17,7 @@ using Mapsui.Tiling;
 using Mapsui.Tiling.Layers;
 using NetTopologySuite.Geometries;
 using System.Collections.ObjectModel;
+using System.Globalization;
 
 namespace GpxManager.ViewModels;
 
@@ -83,6 +84,11 @@ public partial class GpxFileViewModel : ObservableObject
             IsDirty     = false;
             OnPropertyChanged(nameof(GpxText));
             OnPropertyChanged(nameof(HasStrippableTags));
+            // La version simplifiée devient le nouvel état de référence
+            _simplifyCache.Clear();
+            _suppressSimplify = true;
+            IsSimplified = false;
+            _suppressSimplify = false;
         }
         catch (Exception ex)
         {
@@ -93,6 +99,91 @@ public partial class GpxFileViewModel : ObservableObject
 
     [ObservableProperty]
     private TrackViewModel? _selectedTrack;
+
+    private static readonly double[] SimplifySteps = [1.0, 3.0, 10.0, 20.0];
+
+    [ObservableProperty]
+    private int _simplifyStep = 1; // défaut = 3 m
+
+    [ObservableProperty]
+    private double _simplifyEpsilon = 3.0;
+
+    partial void OnSimplifyStepChanged(int value)
+    {
+        SimplifyEpsilon = SimplifySteps[Math.Clamp(value, 0, SimplifySteps.Length - 1)];
+    }
+
+    [ObservableProperty]
+    private bool _isSimplified = false;
+
+    private readonly Dictionary<Track, List<TrackPoint>> _simplifyCache = new();
+    private bool _suppressSimplify;
+
+    partial void OnIsSimplifiedChanged(bool value)
+    {
+        if (_suppressSimplify) return;
+        if (value)
+        {
+            ApplySimplify();
+        }
+        else
+        {
+            foreach (var vm in Tracks)
+            {
+                if (_simplifyCache.TryGetValue(vm.Track, out var original))
+                    UpdateSimplifiedPoints(vm, original);
+            }
+            _simplifyCache.Clear();
+            RefreshTrackLayers();
+        }
+    }
+
+    partial void OnSimplifyEpsilonChanged(double value)
+    {
+        if (IsSimplified) ApplySimplify();
+    }
+
+    private void ApplySimplify()
+    {
+        foreach (var vm in Tracks)
+        {
+            var track = vm.Track;
+            if (!_simplifyCache.ContainsKey(track))
+                _simplifyCache[track] = track.Points.ToList();
+            UpdateSimplifiedPoints(vm, RdpSimplify(_simplifyCache[track], SimplifyEpsilon));
+        }
+        RefreshTrackLayers();
+        MarkDirty();
+    }
+
+    private void UpdateSimplifiedPoints(TrackViewModel vm, List<TrackPoint> pts)
+    {
+        try
+        {
+            var doc = GetWorkingDoc();
+            var ns  = doc.Root!.Name.Namespace;
+            int idx = Tracks.IndexOf(vm);
+            var trkElem = doc.Root.Elements(ns + "trk").ElementAt(idx);
+            trkElem.Elements(ns + "trkseg").Remove();
+            trkElem.Add(new XElement(ns + "trkseg",
+                pts.Select(p =>
+                {
+                    var pt = new XElement(ns + "trkpt",
+                        new XAttribute("lat", p.Latitude.ToString(CultureInfo.InvariantCulture)),
+                        new XAttribute("lon", p.Longitude.ToString(CultureInfo.InvariantCulture)));
+                    if (p.Elevation.HasValue)
+                        pt.Add(new XElement(ns + "ele", p.Elevation.Value.ToString(CultureInfo.InvariantCulture)));
+                    if (p.Time.HasValue)
+                        pt.Add(new XElement(ns + "time", p.Time.Value.ToString("O")));
+                    return pt;
+                })));
+        }
+        catch { return; }
+        _coordsCache.Remove(vm.Track);
+        vm.Track.Points.Clear();
+        vm.Track.Points.AddRange(pts);
+        vm.Refresh();
+    }
 
     [ObservableProperty]
     private bool _isEraserMode;
@@ -438,10 +529,11 @@ public partial class GpxFileViewModel : ObservableObject
     public ILayer? WaypointLayer => _waypointLayer;
     public IReadOnlyList<(MPoint WorldPos, Waypoint Waypoint)> WaypointPositions { get; private set; } = [];
 
-    public GpxFileViewModel(GpxFile file, XDocument? initialDoc = null)
+    public GpxFileViewModel(GpxFile file, XDocument? initialDoc = null, bool isDirty = false)
     {
         File        = file;
         _pendingDoc = initialDoc;
+        _isDirty    = isDirty;
         foreach (var (track, i) in file.Tracks.Select((t, i) => (t, i)))
             Tracks.Add(new TrackViewModel(track, i + 1));
         foreach (var wp in file.Waypoints)
@@ -679,6 +771,48 @@ public partial class GpxFileViewModel : ObservableObject
         for (int i = 0; i < Tracks.Count; i++) Tracks[i].Number = i + 1;
 
         SetSelection([], null);
+    }
+
+    private static List<TrackPoint> RdpSimplify(IList<TrackPoint> pts, double epsilonM)
+    {
+        if (pts.Count <= 2) return [.. pts];
+        var keep = new bool[pts.Count];
+        keep[0] = keep[^1] = true;
+        RdpRecurse(pts, 0, pts.Count - 1, epsilonM, keep);
+        return pts.Where((_, i) => keep[i]).ToList();
+    }
+
+    private static void RdpRecurse(IList<TrackPoint> pts, int lo, int hi, double epsilonM, bool[] keep)
+    {
+        if (hi - lo < 2) return;
+        double maxD = 0; int maxI = lo;
+        for (int i = lo + 1; i < hi; i++)
+        {
+            double d = SegDistM(pts[i], pts[lo], pts[hi]);
+            if (d > maxD) { maxD = d; maxI = i; }
+        }
+        if (maxD > epsilonM)
+        {
+            keep[maxI] = true;
+            RdpRecurse(pts, lo, maxI, epsilonM, keep);
+            RdpRecurse(pts, maxI, hi, epsilonM, keep);
+        }
+    }
+
+    private static double SegDistM(TrackPoint p, TrackPoint a, TrackPoint b)
+    {
+        const double R = 6371000.0;
+        double cosLat = Math.Cos(a.Latitude * Math.PI / 180.0);
+        double mDeg   = R * Math.PI / 180.0;
+        double bx = (b.Longitude - a.Longitude) * cosLat * mDeg;
+        double by = (b.Latitude  - a.Latitude)  * mDeg;
+        double px = (p.Longitude - a.Longitude) * cosLat * mDeg;
+        double py = (p.Latitude  - a.Latitude)  * mDeg;
+        double len2 = bx * bx + by * by;
+        if (len2 < 1e-10) return Math.Sqrt(px * px + py * py);
+        double t  = Math.Clamp((px * bx + py * by) / len2, 0, 1);
+        double dx = px - t * bx, dy = py - t * by;
+        return Math.Sqrt(dx * dx + dy * dy);
     }
 
     public TrackViewModel? FindTrackByLayer(ILayer layer)

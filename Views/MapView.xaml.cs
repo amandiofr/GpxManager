@@ -52,7 +52,7 @@ public partial class MapView : UserControl
         if (e.NewValue is GpxFileViewModel vm)
         {
             MapCtrl.Map = vm.Map;
-            ZoomToTrack();
+            Dispatcher.BeginInvoke(ZoomToTrack, DispatcherPriority.Render);
             ScheduleArrowRefresh();
         }
     }

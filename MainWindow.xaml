@@ -70,6 +70,11 @@
                         ToolTip="Ouvrir un ou plusieurs fichiers GPX (Ctrl+O)">
                     📂  Ouvrir GPX
                 </Button>
+                <Button Command="{Binding JoinAllTabsCommand}" Padding="10,5" FontSize="13"
+                        Visibility="{Binding HasTabs, Converter={StaticResource BoolToVis}}"
+                        ToolTip="Fusionner toutes les traces de tous les fichiers ouverts dans un nouveau fichier">
+                    🔗  Joindre tout
+                </Button>
                 <Button Command="{Binding SelectedTab.SaveCommand}" Padding="10,5" FontSize="13"
                         Visibility="{Binding SelectedTab.IsDirty, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
                         ToolTip="Enregistrer les modifications dans le fichier GPX">

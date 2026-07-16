@@ -36,6 +36,21 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void JoinAllTabs()
+    {
+        var allTracks = Tabs
+            .SelectMany(t => t.Tracks.Select(tv => tv.Track))
+            .ToList();
+        if (allTracks.Count == 0) return;
+
+        var (file, doc) = GpxParser.BuildFromTracks(allTracks);
+        var tab = CreateTab(file, doc, isDirty: true);
+        Tabs.Add(tab);
+        SelectedTab = tab;
+        SaveSession();
+    }
+
+    [RelayCommand]
     private void NewFile()
     {
         var (file, doc) = GpxParser.NewEmpty();
@@ -129,9 +144,9 @@ public partial class MainViewModel : ObservableObject
             MessageBoxResult.No) == MessageBoxResult.Yes;
     }
 
-    private GpxFileViewModel CreateTab(GpxFile gpx, XDocument? doc = null)
+    private GpxFileViewModel CreateTab(GpxFile gpx, XDocument? doc = null, bool isDirty = false)
     {
-        var tab = new GpxFileViewModel(gpx, doc);
+        var tab = new GpxFileViewModel(gpx, doc, isDirty);
         tab.CloseRequested = () =>
         {
             int idx = Tabs.IndexOf(tab);

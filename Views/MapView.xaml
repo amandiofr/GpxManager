@@ -81,12 +81,30 @@
             </Border>
 
             <Border Background="#FFFFFFDD" BorderBrush="#CCCCCC" BorderThickness="1"
-                    CornerRadius="4" Padding="4,2">
+                    CornerRadius="4" Padding="4,2" Margin="0,0,6,0">
                 <ToggleButton IsChecked="{Binding IsPeloteMode}"
                               Style="{StaticResource ToolToggle}"
                               ToolTip="Détecter et afficher les pelotes GPS (amas de points erratiques)">
                     🧶 Pelotes
                 </ToggleButton>
+            </Border>
+
+            <Border Background="#FFFFFFDD" BorderBrush="#CCCCCC" BorderThickness="1"
+                    CornerRadius="4" Padding="4,2">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <ToggleButton IsChecked="{Binding IsSimplified, Mode=TwoWay}"
+                                  Style="{StaticResource ToolToggle}"
+                                  ToolTip="Simplifier la trace sélectionnée (Ramer-Douglas-Peucker)&#x0a;Coché = prévisualisation — décoché = restauration">
+                        Simplifier
+                    </ToggleButton>
+                    <Slider Value="{Binding SimplifyStep, Mode=TwoWay}"
+                            Minimum="0" Maximum="3"
+                            SmallChange="1" LargeChange="1"
+                            IsSnapToTickEnabled="True" TickFrequency="1"
+                            TickPlacement="BottomRight"
+                            Width="60" Margin="4,0,2,0" VerticalAlignment="Center"
+                            ToolTip="{Binding SimplifyEpsilon, StringFormat='Tolérance : {0:F0} m'}" />
+                </StackPanel>
             </Border>
 
         </StackPanel>

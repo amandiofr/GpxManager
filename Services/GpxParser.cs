@@ -38,6 +38,38 @@ public static class GpxParser
         };
     }
 
+    public static (GpxFile file, XDocument doc) BuildFromTracks(IEnumerable<Models.Track> tracks)
+    {
+        var trackList = tracks.ToList();
+        var ns   = Ns11;
+        var root = new XElement(ns + "gpx",
+            new XAttribute("version", "1.1"),
+            new XAttribute("creator", "GpxManager"),
+            new XAttribute(XNamespace.Xmlns + "xsi", "http://www.w3.org/2001/XMLSchema-instance"));
+
+        foreach (var track in trackList)
+        {
+            root.Add(new XElement(ns + "trk",
+                new XElement(ns + "name", track.Name),
+                new XElement(ns + "trkseg",
+                    track.Points.Select(p =>
+                    {
+                        var pt = new XElement(ns + "trkpt",
+                            new XAttribute("lat", p.Latitude.ToString(CultureInfo.InvariantCulture)),
+                            new XAttribute("lon", p.Longitude.ToString(CultureInfo.InvariantCulture)));
+                        if (p.Elevation.HasValue)
+                            pt.Add(new XElement(ns + "ele", p.Elevation.Value.ToString(CultureInfo.InvariantCulture)));
+                        if (p.Time.HasValue)
+                            pt.Add(new XElement(ns + "time", p.Time.Value.ToString("O")));
+                        return pt;
+                    }))));
+        }
+
+        var doc  = new XDocument(new XDeclaration("1.0", "UTF-8", null), root);
+        var file = new GpxFile { FileName = "Sans titre.gpx", FilePath = "", Tracks = trackList };
+        return (file, doc);
+    }
+
     public static (GpxFile file, XDocument doc) NewEmpty()
     {
         var ns  = Ns11;
