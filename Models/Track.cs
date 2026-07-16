@@ -20,11 +20,11 @@ public class Track
     {
         get
         {
-            if (Points.All(p => p.Elevation == null)) return null;
+            var s = SmoothedElevations();
+            if (s == null) return null;
             double gain = 0;
-            for (int i = 1; i < Points.Count; i++)
-                if (Points[i].Elevation > Points[i - 1].Elevation)
-                    gain += Points[i].Elevation!.Value - Points[i - 1].Elevation!.Value;
+            for (int i = 1; i < s.Length; i++)
+                if (s[i] > s[i - 1]) gain += s[i] - s[i - 1];
             return gain;
         }
     }
@@ -51,13 +51,31 @@ public class Track
     {
         get
         {
-            if (Points.All(p => p.Elevation == null)) return null;
+            var s = SmoothedElevations();
+            if (s == null) return null;
             double loss = 0;
-            for (int i = 1; i < Points.Count; i++)
-                if (Points[i].Elevation < Points[i - 1].Elevation)
-                    loss += Points[i - 1].Elevation!.Value - Points[i].Elevation!.Value;
+            for (int i = 1; i < s.Length; i++)
+                if (s[i] < s[i - 1]) loss += s[i - 1] - s[i];
             return loss;
         }
+    }
+
+    // Moyenne glissante sur les altitudes (demi-fenêtre = 20 points)
+    // pour éliminer le bruit GPS avant de calculer le dénivelé cumulé.
+    private double[]? SmoothedElevations(int half = 20)
+    {
+        if (Points.All(p => p.Elevation == null)) return null;
+        var result = new double[Points.Count];
+        for (int i = 0; i < Points.Count; i++)
+        {
+            double sum = 0; int n = 0;
+            for (int j = Math.Max(0, i - half); j <= Math.Min(Points.Count - 1, i + half); j++)
+            {
+                if (Points[j].Elevation.HasValue) { sum += Points[j].Elevation!.Value; n++; }
+            }
+            result[i] = n > 0 ? sum / n : 0;
+        }
+        return result;
     }
 
     private static double Haversine(TrackPoint a, TrackPoint b)
