@@ -40,8 +40,13 @@ public partial class App : Application
 
         StartPipeServer();
 
-        if (e.Args.Length > 0 && MainWindow?.DataContext is MainViewModel vm)
-            vm.LoadFiles(e.Args);
+        var args = e.Args;
+        if (args.Length > 0)
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (MainWindow?.DataContext is MainViewModel vm)
+                    vm.LoadFiles(args);
+            });
     }
 
     private void StartPipeServer()
