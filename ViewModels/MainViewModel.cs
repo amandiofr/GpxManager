@@ -65,6 +65,14 @@ public partial class MainViewModel : ObservableObject
         GpxFileViewModel? lastAdded = null;
         foreach (var fileName in paths)
         {
+            var existing = Tabs.FirstOrDefault(t =>
+                string.Equals(t.File.FilePath, fileName, StringComparison.OrdinalIgnoreCase));
+            if (existing != null)
+            {
+                SelectedTab = existing;
+                continue;
+            }
+
             try
             {
                 var tab = CreateTab(GpxParser.Parse(fileName));
@@ -85,6 +93,40 @@ public partial class MainViewModel : ObservableObject
             SelectedTab = lastAdded;
 
         SaveSession();
+    }
+
+    [RelayCommand]
+    private void CloseAllTabs()
+    {
+        if (!ConfirmClose(Tabs.ToList())) return;
+        SelectedTab = null;
+        Tabs.Clear();
+        SaveSession();
+    }
+
+    [RelayCommand]
+    private void CloseOtherTabs(GpxFileViewModel? tab)
+    {
+        if (tab == null) return;
+        var others = Tabs.Where(t => t != tab).ToList();
+        if (!ConfirmClose(others)) return;
+        foreach (var t in others)
+            Tabs.Remove(t);
+        SelectedTab = tab;
+        SaveSession();
+    }
+
+    private static bool ConfirmClose(IList<GpxFileViewModel> tabs)
+    {
+        var dirty = tabs.Where(t => t.IsDirty).ToList();
+        if (dirty.Count == 0) return true;
+        var names = string.Join("\n", dirty.Select(t => $"  • {t.File.FileName}"));
+        return MessageBox.Show(
+            $"Les fichiers suivants ont des modifications non sauvegardées :\n\n{names}\n\nFermer quand même ?",
+            "Modifications non sauvegardées",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No) == MessageBoxResult.Yes;
     }
 
     private GpxFileViewModel CreateTab(GpxFile gpx, XDocument? doc = null)

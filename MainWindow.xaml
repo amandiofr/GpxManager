@@ -71,7 +71,7 @@
                     📂  Ouvrir GPX
                 </Button>
                 <Button Command="{Binding SelectedTab.SaveCommand}" Padding="10,5" FontSize="13"
-                        Visibility="{Binding SelectedTab.IsDirty, Converter={StaticResource BoolToVis}}"
+                        Visibility="{Binding SelectedTab.IsDirty, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
                         ToolTip="Enregistrer les modifications dans le fichier GPX">
                     💾  Enregistrer
                 </Button>
@@ -117,7 +117,20 @@
 
                 <TabControl.ItemTemplate>
                     <DataTemplate>
-                        <StackPanel Orientation="Horizontal">
+                        <StackPanel Orientation="Horizontal"
+                                    Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=TabControl}}">
+                            <StackPanel.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Fermer les autres onglets"
+                                              Command="{Binding PlacementTarget.Tag.CloseOtherTabsCommand,
+                                                                RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext,
+                                                                          RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                    <MenuItem Header="Fermer tous les onglets"
+                                              Command="{Binding PlacementTarget.Tag.CloseAllTabsCommand,
+                                                                RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                </ContextMenu>
+                            </StackPanel.ContextMenu>
                             <TextBlock Text="{Binding TabTitle}" VerticalAlignment="Center"
                                        MaxWidth="200" TextTrimming="CharacterEllipsis" />
                             <Button Command="{Binding CloseCommand}"
