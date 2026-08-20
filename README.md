@@ -1,6 +1,19 @@
 # GpxManager
 
-Éditeur de fichiers GPX pour Windows, développé en WPF / .NET 8.
+Éditeur de fichiers GPX pour Windows.
+
+## Installation
+
+1. Aller sur la page [Releases](https://github.com/amandiofr/GpxManager/releases/latest).
+2. Dans la section **Assets** de la dernière release (cliquer sur "Assets" pour la déplier), télécharger le fichier `GpxManager-Setup-X.X.X.exe`.
+3. Double-cliquer dessus et suivre l'assistant (Suivant → Suivant → Installer).
+4. GpxManager se lance automatiquement à la fin. Il sera aussi disponible dans le menu Démarrer.
+
+Tout est inclus dans l'installateur, aucune dépendance à installer séparément et aucun droit administrateur requis.
+
+> Windows peut afficher un avertissement "Windows a protégé votre ordinateur" au premier lancement car l'application n'est pas signée numériquement. Cliquer sur **Informations complémentaires** puis **Exécuter quand même**.
+
+Pour désinstaller, utiliser **Applications** dans les Paramètres Windows.
 
 ## Fonctionnalités
 
@@ -61,10 +74,20 @@
 - **Mapsui** 5.1 + **Mapsui.Nts** (carte interactive)
 - Mutex + Named Pipe (instance unique et IPC)
 
-## Compilation
+## Compilation (développeurs)
+
+Prérequis : .NET 8 SDK, Windows.
 
 ```
 dotnet build GpxManager.csproj -c Release
 ```
 
-Prérequis : .NET 8 SDK, Windows.
+### Construire l'installateur (mainteneurs)
+
+Nécessite [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`) en plus du SDK .NET 8.
+
+```
+.\installer\build-installer.ps1 -Version 1.1.0
+```
+
+Ceci publie un build self-contained (le Runtime .NET n'a pas besoin d'être installé sur la machine cible) et l'assemble dans `publish-installer\GpxManager-Setup-<version>.exe`.
